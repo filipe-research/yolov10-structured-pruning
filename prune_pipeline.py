@@ -155,7 +155,8 @@ def load_model(model_path, device):
     return yolo, det
 
 
-def prune_structured(det, ratio, imgsz, device, round_to=None, verbose=True):
+def prune_structured(det, ratio, imgsz, device, round_to=None,
+                     max_layer_ratio=0.8, verbose=True):
     """Converte C2f -> split-free (com checagem de equivalencia) e aplica poda
     estrutural global L1 via torch-pruning. Retorna dict com contagens."""
     import torch_pruning as tp
@@ -198,6 +199,9 @@ def prune_structured(det, ratio, imgsz, device, round_to=None, verbose=True):
     det.requires_grad_(True)
 
     imp = tp.importance.MagnitudeImportance(p=1)  # L1, igual ao criterio atual
+    # max_pruning_ratio limita quanto UMA camada pode perder: com poda global
+    # agressiva (>=60%), sem esse teto o criterio L1 pode esvaziar quase por
+    # completo uma camada critica e colapsar o mAP de forma irrecuperavel.
     pruner = tp.pruner.MagnitudePruner(
         det, example,
         importance=imp,
@@ -205,6 +209,7 @@ def prune_structured(det, ratio, imgsz, device, round_to=None, verbose=True):
         global_pruning=True,
         ignored_layers=ignored,
         round_to=round_to,
+        max_pruning_ratio=max_layer_ratio,
     )
     pruner.step()
 
@@ -299,6 +304,9 @@ def parse_args():
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--device", default="0", help="'0' p/ GPU, 'cpu' p/ CPU")
+    p.add_argument("--max-layer-ratio", type=float, default=0.8,
+                   help="Teto de poda por camada na poda global (evita esvaziar "
+                        "camadas criticas em ratios altos)")
     p.add_argument("--round-to", type=int, default=None,
                    help="Arredondar canais a multiplos de N (ex.: 8/16, ajuda latencia GPU)")
     p.add_argument("--split", default="val", choices=["val", "test"])
@@ -329,7 +337,8 @@ def main():
 
     yolo, det = load_model(args.model, device)
     counts = prune_structured(det, args.ratio, args.imgsz, device,
-                              round_to=args.round_to)
+                              round_to=args.round_to,
+                              max_layer_ratio=args.max_layer_ratio)
 
     if args.sanity_only:
         print("[sanity-only] OK — conversao equivalente, poda aplicada, forward valido.")
