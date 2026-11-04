@@ -165,10 +165,23 @@ def prune_structured(det, ratio, imgsz, device, round_to=None, verbose=True):
     base_macs, base_params = count_ops_params(det, example)
 
     # 1) conversao split-free + prova de equivalencia numerica
-    ref = forward_head_inputs(det, example)
-    n_conv = convert_c2f_splitfree(det)
-    new = forward_head_inputs(det, example)
-    diff = check_equivalence(ref, new)
+    # Em GPUs Ampere+ (inclui RTX 5090) o TF32 (mantissa de 10 bits) e a
+    # selecao de algoritmo do cuDNN mudam entre a conv original e as duas
+    # convs divididas, gerando diferencas ~1e-3 que NAO sao erro da conversao
+    # (na CPU a igualdade e exata, diff 0.0). Desligamos TF32 so durante a
+    # checagem e usamos tolerancia 1e-3.
+    tf32_cudnn = torch.backends.cudnn.allow_tf32
+    tf32_matmul = torch.backends.cuda.matmul.allow_tf32
+    torch.backends.cudnn.allow_tf32 = False
+    torch.backends.cuda.matmul.allow_tf32 = False
+    try:
+        ref = forward_head_inputs(det, example)
+        n_conv = convert_c2f_splitfree(det)
+        new = forward_head_inputs(det, example)
+        diff = check_equivalence(ref, new, atol=1e-3)
+    finally:
+        torch.backends.cudnn.allow_tf32 = tf32_cudnn
+        torch.backends.cuda.matmul.allow_tf32 = tf32_matmul
     if verbose:
         print(f"[conversao] {n_conv} blocos C2f/C2fCIB convertidos — "
               f"equivalencia OK (max diff {diff:.2e})")
