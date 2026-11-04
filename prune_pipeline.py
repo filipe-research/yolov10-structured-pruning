@@ -314,6 +314,10 @@ def parse_args():
     p.add_argument("--label", default=None, help="Rotulo do modelo no CSV")
     p.add_argument("--sanity-only", action="store_true",
                    help="So converte + poda + conta params/FLOPs (sem FT/avaliacao)")
+    p.add_argument("--finetune-baseline", action="store_true",
+                   help="Com --ratio 0: aplica ao baseline o MESMO fine-tuning "
+                        "dos modelos podados (--ft-epochs), para comparacao "
+                        "com orcamento de treino igual")
     p.add_argument("--no-finetune", action="store_true",
                    help="Poda e avalia SEM fine-tuning (mostra o dano bruto da poda)")
     return p.parse_args()
@@ -327,7 +331,11 @@ def main():
     out_dir = Path(args.out)
     label = args.label or Path(args.model).stem
     ratio_pct = int(round(args.ratio * 100))
-    cond = "baseline" if args.ratio <= 0 else f"pruning_estruturado_{ratio_pct}pct"
+    if args.ratio <= 0:
+        cond = (f"baseline_ft{args.ft_epochs}ep" if args.finetune_baseline
+                else "baseline")
+    else:
+        cond = f"pruning_estruturado_{ratio_pct}pct"
     run_name = f"{label}_{cond}"
 
     print("=" * 70)
@@ -347,7 +355,8 @@ def main():
     if not args.data:
         raise SystemExit("--data e obrigatorio sem --sanity-only")
 
-    if args.ratio > 0 and not args.no_finetune:
+    do_ft = (args.ratio > 0 or args.finetune_baseline) and not args.no_finetune
+    if do_ft:
         best = finetune(det, args.model, args.data, out_dir, run_name,
                         args.ft_epochs, args.batch, args.imgsz, args.lr,
                         device_arg, args.workers)

@@ -19,7 +19,10 @@ for split in ("train", "val"):
         xc, yc = (x + w / 2) / 320, (y + h / 2) / 320
         (root / "labels" / split / f"{i}.txt").write_text(
             f"0 {xc:.4f} {yc:.4f} {w / 320:.4f} {h / 320:.4f}\n")
+# 80 nomes (compatibilidade com checkpoints COCO de 80 classes no smoke
+# test; os labels usam apenas a classe 0)
+names = "\n".join(f"  {i}: c{i}" for i in range(80))
 (root / "data.yaml").write_text(
     f"path: {root.resolve()}\ntrain: images/train\nval: images/val\n"
-    "names:\n  0: pessoa\n")
+    f"names:\n{names}\n")
 print("dataset ok:", root.resolve())
