@@ -77,6 +77,13 @@ em disco (MB). P/R/F1 vêm do `val` do ultralytics (limiar no máximo do F1 —
 consistente entre modelos). Latência/FPS: forward batch 1 fp32, 200 iterações
 com warmup e `cuda.synchronize`.
 
+## Bases de dados
+
+Ver [DATASETS.md](DATASETS.md): download do Oxford Town Centre e CAVIAR,
+conversor `prepare_towncentre.py` (video + .top -> formato YOLO com split
+temporal) e a recomendacao de usar o dataset ja processado do projeto para
+comparabilidade de split.
+
 ## Detalhes que importam
 
 - **`c2f_splitfree.py` precisa estar importável ao carregar qualquer
