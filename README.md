@@ -108,3 +108,38 @@ comparabilidade de split.
   poda antes da recuperação por fine-tuning.
 - Export para o Raspberry (ONNX/NCNN): `YOLO(best).export(format="onnx")`
   funciona normalmente — o modelo podado é um DetectionModel comum, só menor.
+
+## Experimento na máquina GPU (base Oxford do projeto)
+
+A base processada (split do projeto: 42 train / 7 val / 42 test, classe única
+"pessoa") deve ficar em `/home/pesquisador/pesquisa/datasets/oxford` com
+`images/`, `labels/` e o `data.yaml` na raiz (cópia em `configs/oxford_data.yaml`).
+
+```bash
+# 0) baseline treinado nesta base (se não houver um best.pt do projeto)
+#    Base pequena: ~minutos numa RTX 5090.
+yolo detect train model=yolov10n.pt \
+    data=/home/pesquisador/pesquisa/datasets/oxford/data.yaml \
+    epochs=100 imgsz=640 name=yolov10n_oxford
+
+# 1) linha baseline no CSV
+python prune_pipeline.py \
+    --model runs/detect/yolov10n_oxford/weights/best.pt \
+    --data /home/pesquisador/pesquisa/datasets/oxford/data.yaml \
+    --ratio 0 --label yolov10n --out results_oxford
+
+# 2) poda estrutural + fine-tuning (20/40/60/80%)
+for r in 0.2 0.4 0.6 0.8; do
+  python prune_pipeline.py \
+      --model runs/detect/yolov10n_oxford/weights/best.pt \
+      --data /home/pesquisador/pesquisa/datasets/oxford/data.yaml \
+      --ratio $r --ft-epochs 30 --label yolov10n --out results_oxford
+done
+```
+
+Atenção à leitura dos resultados nesta base: o split de validação tem só
+7 imagens, então o mAP de val é ruidoso — rode também `--split test`
+(42 imagens) para uma leitura mais estável, e compare baseline e podado
+sempre no MESMO split. O split é por frame (blocos intercalados do mesmo
+vídeo), herdado do projeto para manter comparabilidade com a tabela
+existente.

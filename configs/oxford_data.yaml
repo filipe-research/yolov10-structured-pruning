@@ -1,0 +1,8 @@
+# Oxford Town Centre — base processada (split do projeto)
+# Copia de referencia; a base na maquina GPU deve ter este arquivo na raiz.
+path: /home/pesquisador/pesquisa/datasets/oxford
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: pessoa
