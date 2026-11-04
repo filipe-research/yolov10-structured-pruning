@@ -1,0 +1,10 @@
+# Versoes validadas (teste de sanidade executado com estas):
+#   torch 2.15.0+cu132 / Python 3.13 — qualquer torch >= 2.7 com build CUDA >= 12.8
+#   serve para a RTX 5090 (sm_120). O wheel padrao do PyPI atual ja vem com
+#   CUDA novo o suficiente: pip install torch torchvision
+# Se o torch instalado nao enxergar a 5090 ("no kernel image"), use:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+ultralytics==8.4.202
+torch-pruning==1.6.0
+opencv-python
+numpy
